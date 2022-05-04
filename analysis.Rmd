@@ -1,4 +1,4 @@
-# Machine Learning Code
+# ------------ MACHINE LEARNING CODE ------------------
 
 ```{r, echo = FALSE, message = FALSE, warning = FALSE}
 source(here::here("scripts/setup.R"))
@@ -16,8 +16,6 @@ nursing_data <- read_csv("nursing_data.csv")
 real_estate <- read_csv("real_estate_data.csv")
 
 Wine <- read_csv("Wine.csv")
-
-#Heyman
 
 ```
 
