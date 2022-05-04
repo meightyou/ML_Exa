@@ -1,0 +1,90 @@
+# Machine Learning Code
+
+```{r, echo = FALSE, message = FALSE}
+source(here::here("scripts/setup.R"))
+```
+
+# Data & Packages
+
+```{r, echo = FALSE, message = FALSE}
+DocVis <- read_csv2("DocVis.csv")
+
+german <- read_csv2("german.csv")
+
+nursing_data <- read_csv2("nursing_data.csv")
+
+real_estate <- read_csv2("real_estate_data.csv")
+
+Wine <- read_csv2("Wine.csv")
+
+
+
+addresses <- read_excel("addresses2022-01-15.xlsx")
+
+```
+
+# Course 1
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+
+# Course 2 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 3 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 4 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 5 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 6 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 7 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 8 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+# Course 9 
+
+```{r, echo = FALSE, message = FALSE}
+
+
+```
+
+
