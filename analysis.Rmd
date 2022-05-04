@@ -625,26 +625,529 @@ plot(nn5, rep="best")
 
 ```
 
-# Course 6 
+# Couse 6 Models: Support Vector Machine
+
+## 1 Support Vector Machine (SVM)
+
+### 1.1 Prepare the data
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(ISLR)
+library(dplyr)
+MyCarseats <- Carseats %>% mutate(SaleHigh=ifelse(Sales > 7.5, "Yes", "No"))
+MyCarseats <- MyCarseats %>% select(-Sales)
+MyCarseats$SaleHigh <- as.factor(MyCarseats$SaleHigh)
+
+set.seed(123) # for reproducibility 
+index.tr <- sample(x=1:nrow(MyCarseats), size=0.8*nrow(MyCarseats), replace=FALSE)
+df.tr <- MyCarseats[index.tr,]
+df.te <- MyCarseats[-index.tr,]
+
+```
+
+### 1.2 Linear SVM and the accuracy
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(e1071)
+carseats.svm <- svm(SaleHigh ~ ., data=df.tr, kernel="linear")
+carseats.svm
+carseats.svm.pred <- predict(carseats.svm, newdata = df.te)
+
+table(Pred=carseats.svm.pred, obs=df.te$SaleHigh)
+
+library(caret)
+confusionMatrix(data=carseats.svm.pred, reference = df.te$SaleHigh )
+
+```
+
+### 1.3 Radial basis SVM
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+carseats.rb <- svm(SaleHigh ~ ., data=df.tr, kernel="radial")
+carseats.rb
+carseats.rb.pred <- predict(carseats.rb, newdata = df.te)
+confusionMatrix(data=carseats.rb.pred, reference = df.te$SaleHigh )
+
+```
+
+### 1.4 Tuning the hyperparameters
+
+### 1.4.1 Linear SVM
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+trctrl <- trainControl(method = "cv", number=10)
+set.seed(143)
+svm_Linear <- train(SaleHigh ~., data = df.tr, method = "svmLinear",
+                    trControl=trctrl)
+svm_Linear
+
+grid <- expand.grid(C = c(0.01, 0.1, 1, 10, 100, 1000))
+grid
+set.seed(143)
+svm_Linear_Grid <- train(SaleHigh ~., data = df.tr, method = "svmLinear",
+                         trControl=trctrl,
+                         tuneGrid = grid)
+svm_Linear_Grid
+plot(svm_Linear_Grid)
+svm_Linear_Grid$bestTune
+
+```
+
+### 1.4.2 Radial Basis SVM
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+grid_radial <- expand.grid(sigma = c(0.01, 0.02, 0.05, 0.1),
+                           C = c(1, 10, 100, 500, 1000))
+grid_radial
+set.seed(143)
+svm_Radial_Grid <- train(SaleHigh ~., data = df.tr, method = "svmRadial",
+                         trControl=trctrl,
+                         tuneGrid = grid_radial)
+svm_Radial_Grid
+plot(svm_Radial_Grid)
+svm_Radial_Grid$bestTune
+
+```
+
+### 1.5 Best model
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+carseats.rb.tuned <- svm(SaleHigh ~ .,data = df.tr,
+                         kernel = "radial", gamma = svm_Radial_Grid$bestTune$sigma,
+                         cost = svm_Radial_Grid$bestTune$C)
+carseats.rb.tuned.pred <- predict(carseats.rb.tuned, newdata = df.te)
+confusionMatrix(data=carseats.rb.tuned.pred, reference = df.te$SaleHigh)
+
+```
+
+# Course 7 Model scoring
+
+## 1 Regression task
+
+### 1.1 Data
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(readr)
+real_estate_data <- read_csv("real_estate_data.csv") # adapt the path
+
+library(caret)
+set.seed(234)
+index.tr <- createDataPartition(y = real_estate_data$Price, p= 0.8, list = FALSE)
+df.tr <- real_estate_data[index.tr,]
+df.te <- real_estate_data[-index.tr,]
+```
+
+### 1.2 Models
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(rpart)
+est.lm <- lm(Price~TransDate+HouseAge+Dist+
+               NumStores+Lat+Long, data=df.tr)
+est.rt <- rpart(Price~TransDate+HouseAge+Dist+
+                  NumStores+Lat+Long, data=df.tr)
+est.knn <- knnreg(Price~TransDate+HouseAge+Dist+
+                    NumStores+Lat+Long, data=df.tr, k = 3)
+
+```
+
+### 1.3 R square
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+R2(predict(est.lm, newdata = df.te), df.te$Price)
+R2(predict(est.rt, newdata = df.te), df.te$Price)
+R2(predict(est.knn, newdata = df.te), df.te$Price)
+
+cor(predict(est.lm, newdata = df.te), df.te$Price)^2
+
+```
+
+### 1.4 RMSE
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+RMSE(predict(est.lm, newdata = df.te), df.te$Price)
+RMSE(predict(est.rt, newdata = df.te), df.te$Price)
+RMSE(predict(est.knn, newdata = df.te), df.te$Price)
+
+```
+
+### 1.5 MAE
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+MAE(predict(est.lm, newdata = df.te), df.te$Price)
+MAE(predict(est.rt, newdata = df.te), df.te$Price)
+MAE(predict(est.knn, newdata = df.te), df.te$Price)
+
+mean(abs(predict(est.lm, newdata = df.te)-df.te$Price))
+
+```
+
+### 1.6 The best model
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+par(mfrow=c(2,2))
+plot(df.te$Price ~ predict(est.lm, newdata = df.te), xlab="Prediction", 
+     ylab="Observed prices", main="Lin. Reg.")
+abline(0,1)
+plot(df.te$Price ~ predict(est.rt, newdata = df.te), xlab="Prediction", 
+     ylab="Observed prices", main="Lin. Reg.")
+abline(0,1)
+plot(df.te$Price ~ predict(est.knn, newdata = df.te), xlab="Prediction", 
+     ylab="Observed prices", main="Lin. Reg.")
+abline(0,1)
+par(mfrow=c(1,1))
+
+```
+
+## 2 Classification task
+
+### 2.1 Data
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+DocVis <- read.csv("DocVis.csv") ## adapt the path
+DocVis$visits <- as.factor(DocVis$visits)
+
+library(caret)
+set.seed(346)
+index.tr <- createDataPartition(y = DocVis$visits, p= 0.8, list = FALSE)
+df.tr <- DocVis[index.tr,]
+df.te <- DocVis[-index.tr,]
+
+```
+
+### 2.2 Models
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(naivebayes)
+library(e1071)
+library(adabag)
+
+## Logistic regression
+Doc.lr <- glm(visits~., data=df.tr, family="binomial")
+Doc.lr <- step(Doc.lr)
+
+## Naive Bayes 
+Doc.nb <- naive_bayes(visits~., data=df.tr, usekernel=TRUE) 
+
+## Classification tree 
+Doc.ct <- autoprune(visits~., data=df.tr)
+
+## SVM radial basis
+# grid_radial <- expand.grid(sigma = c(0.0001, 0.001, 0.01, 0.1),
+#                           C = c(0.1, 1, 10, 100, 1000))
+# trctrl <- trainControl(method = "cv", number=10)
+# set.seed(143)
+# Doc.svm <- train(visits ~., data = df.tr, method = "svmRadial",
+#                          trControl=trctrl,
+#                          tuneGrid = grid_radial)
+Doc.svm <- svm(visits~., data=df.tr, gamma=0.001, cost=1000, probability=TRUE)
+```
+
+### 2.3 Predictions
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+## Logistic regression
+Doc.lr.prob <- predict(Doc.lr, newdata=df.te, type="response")
+Doc.lr.pred <- ifelse(Doc.lr.prob>0.5,"Yes","No")
+
+## Naive Bayes 
+Doc.nb.prob <- predict(Doc.nb, newdata=df.te, type="prob") 
+Doc.nb.pred <- predict(Doc.nb, newdata=df.te) 
+
+## Classification tree 
+Doc.ct.prob <- predict(Doc.ct, newdata=df.te, type="prob")
+Doc.ct.pred <- predict(Doc.ct, newdata=df.te, type="class")
+
+## SVM radial basis
+library(dplyr)
+Doc.svm.prob <- predict(Doc.svm, newdata=df.te, probability=TRUE) %>% attr("probabilities")
+Doc.svm.pred <- predict(Doc.svm, newdata=df.te, type="class")
+
+```
+
+### 2.4 Confusion matrices and prediction-based measures
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+confusionMatrix(data=as.factor(Doc.lr.pred), reference = df.te$visits)
+confusionMatrix(data=as.factor(Doc.nb.pred), reference = df.te$visits)
+confusionMatrix(data=as.factor(Doc.ct.pred), reference = df.te$visits)
+confusionMatrix(data=as.factor(Doc.svm.pred), reference = df.te$visits)
+
+```
+
+### 2.5 Probability-based measures
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+df.pred.lr <- data.frame(obs=df.te$visits,
+                         Yes=Doc.lr.prob,
+                         No=1-Doc.lr.prob,
+                         pred=as.factor(Doc.lr.pred))
+head(df.pred.lr)
+df.pred.nb <- data.frame(obs=df.te$visits,
+                         Doc.nb.prob,
+                         pred=as.factor(Doc.nb.pred))
+head(df.pred.nb)
+df.pred.ct <- data.frame(obs=df.te$visits,
+                         Doc.ct.prob,
+                         pred=as.factor(Doc.ct.pred))
+head(df.pred.ct)
+df.pred.svm <- data.frame(obs=df.te$visits,
+                          Doc.svm.prob,
+                          pred=as.factor(Doc.svm.pred))
+head(df.pred.svm)
+
+twoClassSummary(df.pred.lr, lev = levels(df.pred.lr$obs))
+twoClassSummary(df.pred.nb, lev = levels(df.pred.lr$obs))
+twoClassSummary(df.pred.ct, lev = levels(df.pred.lr$obs))
+twoClassSummary(df.pred.svm, lev = levels(df.pred.lr$obs))
+
+mnLogLoss(df.pred.lr, lev = levels(df.pred.lr$obs))
+mnLogLoss(df.pred.nb, lev = levels(df.pred.lr$obs))
+mnLogLoss(df.pred.ct, lev = levels(df.pred.lr$obs))
+mnLogLoss(df.pred.svm, lev = levels(df.pred.lr$obs))
+
+```
+
+### 2.6 ROC curve and probability threshold tuning
 
 ```{r, echo = T, message = FALSE,warning=FALSE}
 
 
+library(pROC)
+ROC.lr <- roc(obs ~ Yes, data=df.pred.lr)
+ROC.nb <- roc(obs ~ Yes, data=df.pred.nb)
+ROC.ct <- roc(obs ~ Yes, data=df.pred.ct)
+ROC.svm <- roc(obs ~ Yes, data=df.pred.svm)
+
+plot(ROC.lr, print.thres="best")
+plot(ROC.nb, print.thres="best", add=TRUE)
+plot(ROC.ct, print.thres="best", add=TRUE)
+plot(ROC.svm, print.thres="best", add=TRUE)
+
+Doc.lr.prob.tr <- predict(Doc.lr, newdata=df.tr, type="response")
+df.pred.lr.tr <- data.frame(obs=df.tr$visits,
+                            Yes=Doc.lr.prob.tr)
+ROC.lr.tr <- roc(obs ~ Yes, data=df.pred.lr.tr)
+plot(ROC.lr.tr, print.thres="best")
+
+Doc.lr.pred.opt <- ifelse(Doc.lr.prob>0.193,"Yes","No")
+confusionMatrix(data=as.factor(Doc.lr.pred.opt), reference = df.te$visits)
 ```
 
-# Course 7 
+# Course 8 Data splitting
+
+## 1 Prepare the data, set aside the test set
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+DocVis <- read.csv("DocVis.csv") ## adapt the path
+DocVis$visits <- as.factor(DocVis$visits) ## make sure that visits is a factor
+
+library(caret)
+library(dplyr)
+set.seed(346)
+index.tr <- createDataPartition(y = DocVis$visits, p= 0.8, list = FALSE)
+df.tr <- DocVis[index.tr,]
+df.te <- DocVis[-index.tr,]
+
+```
+
+## 2 A 10-fold Cross-validation
+
+### 2.1 First fold
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+index.CV <- createFolds(y = df.tr$visits, k=10)
+index.CV[[1]]
+
+df.cv.tr <- df.tr[-index.CV[[1]],]
+df.cv.val <- df.tr[index.CV[[1]],]
+
+Doc.cv <- glm(visits~., data=df.cv.tr, family="binomial") %>% step()
+Doc.cv.prob <- predict(Doc.cv, newdata=df.cv.val, type="response")
+Doc.cv.pred <- ifelse(Doc.cv.prob>0.5,"Yes","No")
+confusionMatrix(data=as.factor(Doc.cv.pred), reference = df.cv.val$visits)$overall[1]
+
+```
+
+### 2.2 Loop on the 10 folds
 
 ```{r, echo = T, message = FALSE,warning=FALSE}
 
+acc.vec <- numeric(10)
+for (i in 1:10){
+  df.cv.tr <- df.tr[-index.CV[[i]],]
+  df.cv.val <- df.tr[index.CV[[i]],]
+  
+  Doc.cv <- glm(visits~., data=df.cv.tr, family="binomial") %>% step(trace=0)
+  Doc.cv.prob <- predict(Doc.cv, newdata=df.cv.val, type="response")
+  Doc.cv.pred <- ifelse(Doc.cv.prob>0.5,"Yes","No")
+  acc.vec[i] <- confusionMatrix(data=as.factor(Doc.cv.pred), reference = df.cv.val$visits)$overall[1]
+}
+acc.vec
+
+mean(acc.vec)
+sd(acc.vec)
 
 ```
 
-# Course 8 
+### 2.3 With caret
 
 ```{r, echo = T, message = FALSE,warning=FALSE}
 
+trctrl <- trainControl(method = "cv", number=10)
+
+set.seed(346)
+Doc.cv <- train(visits ~., data = df.tr, method = "glmStepAIC", family="binomial",
+                trControl=trctrl, trace=0)
+Doc.cv
+
+Doc.pred <- predict(Doc.cv, newdata = df.te)
+confusionMatrix(data=Doc.pred, reference = df.te$visits)
 
 ```
+
+
+## 3 Bootstrap with 100 replicates
+
+### 3.1 First sample
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+set.seed(897)
+index.boot <- createResample(y=df.tr$visits, times=100)
+index.boot[[1]]
+
+df.boot.tr <- df.tr[index.boot[[1]],]
+dim(df.boot.tr)
+df.boot.val <- df.tr[-index.boot[[1]],]
+dim(df.boot.val)
+
+Doc.boot <- glm(visits~., data=df.boot.tr, family="binomial") %>% step()
+
+Doc.boot.prob.val <- predict(Doc.boot, newdata=df.boot.val, type="response")
+Doc.boot.pred.val <- ifelse(Doc.boot.prob.val>0.5,"Yes","No")
+oob.acc <- confusionMatrix(data=as.factor(Doc.boot.pred.val), reference = df.boot.val$visits)$overall[1]
+
+Doc.boot.prob.tr <- predict(Doc.boot, newdata=df.boot.tr, type="response")
+Doc.boot.pred.tr <- ifelse(Doc.boot.prob.tr>0.5,"Yes","No")
+app.acc <- confusionMatrix(data=as.factor(Doc.boot.pred.tr), reference = df.boot.tr$visits)$overall[1]
+
+oob.acc ## out-of-bag accuracy
+app.acc ## apparent accuracy
+0.368*app.acc + 0.632*oob.acc ## accuracy estimate
+
+```
+
+### 3.2 Loop on the 100 sample
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+oob.acc.vec <- numeric(100)
+app.acc.vec <- numeric(100)
+acc.vec <- numeric(100)
+for (i in 1:100){
+  df.boot.tr <- df.tr[index.boot[[i]],]
+  df.boot.val <- df.tr[-index.boot[[i]],]
+  
+  Doc.boot <- glm(visits~., data=df.boot.tr, family="binomial") %>% step(trace=0)
+  Doc.boot.prob.val <- predict(Doc.boot, newdata=df.boot.val, type="response")
+  Doc.boot.pred.val <- ifelse(Doc.boot.prob.val>0.5,"Yes","No")
+  oob.acc.vec[i] <- confusionMatrix(data=as.factor(Doc.boot.pred.val), reference = df.boot.val$visits)$overall[1]
+  
+  Doc.boot.prob.tr <- predict(Doc.boot, newdata=df.boot.tr, type="response")
+  Doc.boot.pred.tr <- ifelse(Doc.boot.prob.tr>0.5,"Yes","No")
+  app.acc.vec[i] <- confusionMatrix(data=as.factor(Doc.boot.pred.tr), reference = df.boot.tr$visits)$overall[1]
+  
+  acc.vec[i] <- 0.368*app.acc.vec[i] + 0.632*oob.acc.vec[i]
+}
+
+acc.vec
+
+mean(acc.vec)
+sd(acc.vec)
+
+```
+
+### 3.3 With caret
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+set.seed(346)
+trctrl <- trainControl(method = "boot632", number=100)
+Doc.boot <- train(visits ~., data = df.tr, method = "glmStepAIC", family="binomial",
+                  trControl=trctrl, trace = 0)
+Doc.boot
+
+
+```
+
+## 4 Balancing data
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+## Statistics on the training set
+table(df.tr$visits)
+
+Doc.lr <- glm(visits~., data=df.tr, family="binomial") %>% step(trace=0)
+Doc.lr.prob <- predict(Doc.lr, newdata=df.te, type="response")
+Doc.lr.pred <- ifelse(Doc.lr.prob>0.5,"Yes","No")
+confusionMatrix(data=as.factor(Doc.lr.pred), reference = df.te$visits)
+
+```
+
+### 4.1 Sub-sampling
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+n.yes <- min(table(df.tr$visits)) ## 840
+
+df.tr.no <- filter(df.tr, visits=="No") ## the "No" cases
+df.tr.yes <- filter(df.tr, visits=="Yes") ## The "Yes" cases
+
+index.no <- sample(size=n.yes, x=1:nrow(df.tr.no), replace=FALSE) ## sub-sample 840 instances from the "No"
+
+df.tr.subs <- data.frame(rbind(df.tr.yes, df.tr.no[index.no,])) ## Bind all the "Yes" and the sub-sampled "No"
+table(df.tr.subs$visits) ## The cases are balanced
+
+Doc.lr.subs <- glm(visits~., data=df.tr.subs, family="binomial") %>% step(trace=0)
+Doc.lr.subs.prob <- predict(Doc.lr.subs, newdata=df.te, type="response")
+Doc.lr.subs.pred <- ifelse(Doc.lr.subs.prob>0.5,"Yes","No")
+confusionMatrix(data=as.factor(Doc.lr.subs.pred), reference = df.te$visits)
+
+```
+
+### 4.2 Resampling
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+n.no <- max(table(df.tr$visits)) ## 3313
+
+df.tr.no <- filter(df.tr, visits=="No")
+df.tr.yes <- filter(df.tr, visits=="Yes")
+
+index.yes <- sample(size=n.no, x=1:nrow(df.tr.yes), replace=TRUE)
+df.tr.res <- data.frame(rbind(df.tr.no, df.tr.yes[index.yes,]))
+table(df.tr.res$visits)
+
+Doc.lr.res <- glm(visits~., data=df.tr.res, family="binomial") %>% step(trace=0)
+Doc.lr.res.prob <- predict(Doc.lr.res, newdata=df.te, type="response")
+Doc.lr.res.pred <- ifelse(Doc.lr.res.prob>0.5,"Yes","No")
+confusionMatrix(data=as.factor(Doc.lr.res.pred), reference = df.te$visits)
+
+```
+
 
 # Course 9 
 
