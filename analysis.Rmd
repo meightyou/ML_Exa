@@ -7,15 +7,15 @@ source(here::here("scripts/setup.R"))
 # Data & Packages
 
 ```{r, echo = FALSE, message = FALSE}
-DocVis <- read_csv2("DocVis.csv")
+DocVis <- read_csv("DocVis.csv")
 
-german <- read_csv2("german.csv")
+german <- read_csv("german.csv")
 
-nursing_data <- read_csv2("nursing_data.csv")
+nursing_data <- read_csv("nursing_data.csv")
 
-real_estate <- read_csv2("real_estate_data.csv")
+real_estate <- read_csv("real_estate_data.csv")
 
-Wine <- read_csv2("Wine.csv")
+Wine <- read_csv("Wine.csv")
 
 
 
