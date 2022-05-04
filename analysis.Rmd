@@ -4,7 +4,7 @@
 source(here::here("scripts/setup.R"))
 ```
 
-# Data & Packages
+# Data Loading
 
 ```{r, echo = FALSE, message = FALSE}
 DocVis <- read_csv("DocVis.csv")
@@ -17,7 +17,183 @@ real_estate <- read_csv("real_estate_data.csv")
 
 Wine <- read_csv("Wine.csv")
 
+imports.85 <- read.csv("imports-85.data", 
+                       header=FALSE, na.strings="?")
+
 ```
+
+# Course 0
+
+## EDA
+
+### Data Rename
+
+```{r, echo = FALSE, message = FALSE}
+names(imports.85) <- c("symboling", "normalized_losses", "make", "fuel_type", "aspiration",
+                       "num_doors", "body_style", "drive_wheels", "engine_location", "wheel_base",
+                       "length", "width", "height","curb_weight", "engine_type", "num_cylinders",
+                       "engine_size", "fuel_system", "bore", "stroke", "compression_ratio", "horsepower",
+                       "peak_rpm", "city_mpg", "highway_mpg", "price")
+```
+
+### Data structure and summary
+
+```{r, echo = FALSE, message = FALSE}
+
+str(imports.85)
+head(imports.85)
+summary(imports.85)
+
+# Turning character columns into factors through a loop
+for (i in 1:ncol(imports.85)){
+  if (class(imports.85[,i])=="character"){
+    imports.85[,i] <- factor(imports.85[,i])
+  }
+}
+# same operation can also be done through the `lapply` function
+# imports.85[sapply(imports.85, is.character)] <-
+#   lapply(imports.85[sapply(imports.85, is.character)],
+#          as.factor)
+
+str(imports.85)
+summary(imports.85)
+
+dfSummary(imports.85, style="grid")
+
+view(dfSummary(imports.85, style="grid",plain.ascii = FALSE, tmp.img.dir = "/tmp"))
+
+## first look at the current levels
+levels(imports.85$fuel_system)
+## Now rename the levels merging 4bbl[3], mfi[5], spfi[8] to "other"
+levels(imports.85$fuel_system)[c(3,5,8)] <- "other"
+
+## see the result
+summary(imports.85)
+
+```
+
+### Graph for each variable
+
+```{r, echo = FALSE, message = FALSE}
+
+
+## Individually
+p1 <- ggplot(imports.85, aes(x="price", y=price)) + 
+  geom_boxplot()+xlab("")
+p1
+p2 <- ggplot(imports.85, aes(x="price", y=price)) + 
+  geom_violin()+xlab("")
+p2
+p3 <- ggplot(imports.85, aes(x=price)) + 
+  geom_histogram(color="black", fill="white")
+p3
+## The 3 plots on the same page
+grid.arrange(p1, p2, p3, nrow=2, layout_matrix=matrix(c(1,2,3,3), byrow=TRUE, nc=2))
+
+## pie chart with the basic plot function
+## (ggplot2 is not good at producing pie charts)
+pie(table(imports.85$fuel_system))
+
+## bar plots
+imports.85 %>% count(fuel_system) %>%
+  ggplot(aes(y=n, x=fuel_system)) + 
+  geom_bar(stat="identity")+coord_flip()
+
+imports.85 %>% count(fuel_system) %>%
+  ggplot(aes(fill=fuel_system, y=n, x="Fuel System")) + 
+  geom_bar(position="stack", stat="identity", color="black")+xlab("")
+
+
+## pie chart with the basic plot function
+## (ggplot2 is not good at producing pie charts)
+pie(table(imports.85$fuel_system))
+
+## bar plots
+imports.85 %>% count(fuel_system) %>%
+  ggplot(aes(y=n, x=fuel_system)) + 
+  geom_bar(stat="identity")+coord_flip()
+
+imports.85 %>% count(fuel_system) %>%
+  ggplot(aes(fill=fuel_system, y=n, x="Fuel System")) + 
+  geom_bar(position="stack", stat="identity", color="black")+xlab("")
+```
+
+### Several graphs
+
+```{r, echo = FALSE, message = FALSE}
+
+## For the numerical variables
+imports.85 %>%
+  keep(is.numeric) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~ key, scales = "free") +
+  geom_histogram()
+
+## For the categorical variables
+imports.85 %>%
+  keep(is.factor) %>% 
+  gather() %>% 
+  ggplot(aes(value)) +
+  facet_wrap(~ key, scales = "free") +
+  geom_bar(stat="count")+coord_flip()
+
+imports.85 %>%
+  keep(is.numeric) %>% 
+  gather()
+```
+
+### Scatterplot matrix for several variables
+
+```{r, echo = FALSE, message = FALSE}
+library(GGally)
+
+imports.85 %>% select(length, height, width, price) %>% 
+ ggpairs()
+
+imports.85 %>% select(length, height, width, price, fuel_system) %>% 
+  ggpairs(columns=1:4, aes(colour=fuel_system))
+
+imports.85 %>% select(fuel_system, fuel_type, aspiration) %>% 
+  ggpairs()
+
+imports.85 %>% select(body_style, num_doors, width, price) %>% 
+  ggpairs()
+
+```
+
+
+
+## Recoding and feature engineering
+
+### Building a new feature
+
+```{r, echo = FALSE, message = FALSE}
+
+imports.85 %>% mutate(volume=height*width*length) %>% 
+  select(price, height, width, length, volume) %>% ggpairs
+```
+
+### Recoding a variable
+
+```{r, echo = FALSE, message = FALSE}
+
+imports.85 %>% mutate(num_cyl_num=case_when(
+  num_cylinders=="two"~2, 
+  num_cylinders=="three"~3, 
+  num_cylinders=="four"~4, 
+  num_cylinders=="five"~5, 
+  num_cylinders=="six"~6, 
+  num_cylinders=="eight"~8, 
+  num_cylinders=="twelve"~12)) %>% 
+  select(price, num_cyl_num, num_cylinders) %>% ggpairs
+
+library(fastDummies)
+imports.85 %>% select(fuel_system) %>% dummy_cols(remove_first_dummy = TRUE)
+
+```
+
+
 
 # Course 1
 
