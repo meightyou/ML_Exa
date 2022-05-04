@@ -379,10 +379,74 @@ table(pred=predict(DocVis.nb), obs=DocVis$visits)
 
 # Course 4 
 
+## 1 Classification tree
+
+### 1.1 Prepare the data
+```{r, echo = FALSE, message = FALSE}
+library(ISLR)
+library(dplyr)
+MyCarseats <- Carseats %>% mutate(SaleHigh=ifelse(Sales > 7.5, "Yes", "No"))
+MyCarseats <- MyCarseats %>% select(-Sales)
+
+set.seed(123) # for reproducibility 
+index.tr <- sample(x=1:nrow(MyCarseats), size=2/3*nrow(MyCarseats), replace=FALSE)
+df.tr <- MyCarseats[index.tr,]
+df.te <- MyCarseats[-index.tr,]
+
+```
+
+### 1.2 Classification tree fit and plot
+
+```{r, echo = FALSE, message = FALSE}
+library(rpart)
+library(rpart.plot)
+set.seed(1234)
+carseats.tree <- rpart(SaleHigh ~ ., data=df.tr)
+rpart.plot(carseats.tree)
+
+```
+
+### 1.3 Pruning the tree
+
+```{r, echo = FALSE, message = FALSE}
+plotcp(carseats.tree)
+carseats.tree.prune <- prune(carseats.tree, cp=0.025)
+rpart.plot(carseats.tree.prune)
+library(adabag)
+set.seed(123455)
+rpart.plot(autoprune(SaleHigh ~ ., data=df.tr))
+
+```
+
+### 1.4 Predictions
+
+```{r, echo = FALSE, message = FALSE}
+#answer 
+MyCarseats[1,]
+
+pred <- predict(carseats.tree.prune, newdata=df.te, type="class")
+table(Pred=pred, Obs=df.te$SaleHigh)
+
+predict(carseats.tree.prune, newdata=df.te, type="prob")
+
+```
+
+## 2 Regression tree
+
 ```{r, echo = FALSE, message = FALSE}
 
 
+set.seed(123)
+carseats.reg <- rpart(Sales ~ ., data=Carseats)
+rpart.plot(carseats.reg)
+
+carseat.reg.pred <- predict(carseats.reg)
+plot(carseat.reg.pred ~ Carseats$Sales,
+     xlab="Sales", ylab="Predictions")
+abline(0,1, col="red")
+
 ```
+
 
 # Course 5 
 
