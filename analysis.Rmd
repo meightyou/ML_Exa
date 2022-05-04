@@ -1,6 +1,6 @@
 # Machine Learning Code
 
-```{r, echo = FALSE, message = FALSE}
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
 source(here::here("scripts/setup.R"))
 ```
 
@@ -18,8 +18,6 @@ real_estate <- read_csv2("real_estate_data.csv")
 Wine <- read_csv2("Wine.csv")
 
 
-
-addresses <- read_excel("addresses2022-01-15.xlsx")
 
 ```
 
