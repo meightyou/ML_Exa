@@ -162,8 +162,6 @@ imports.85 %>% select(body_style, num_doors, width, price) %>%
 
 ```
 
-
-
 ## Recoding and feature engineering
 
 ### Building a new feature
