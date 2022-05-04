@@ -1149,11 +1149,333 @@ confusionMatrix(data=as.factor(Doc.lr.res.pred), reference = df.te$visits)
 ```
 
 
-# Course 9 
+# Course 9 Clustering
+
+## Data
 
 ```{r, echo = T, message = FALSE,warning=FALSE}
+
+wine <- read.csv("Wine.csv") # adapt the path
+row.names(wine) <- paste("W", c(1:nrow(wine)), sep="") # row names are used after
+head(wine)
+summary(wine)
+wine[,-12] <- scale(wine[,-12]) ## scale all the features except "quality"
+
+```
+
+## 2 Hierarchical clustering
+
+### Distances
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(reshape2) # contains the melt function
+library(ggplot2)
+wine.d <- dist(wine[,-12], method = "manhattan") # matrix of Manhattan distances 
+
+wine.melt <- melt(as.matrix(wine.d)) # create a data frame of the distances in long format
+head(wine.melt)
+
+ggplot(data = wine.melt, aes(x=Var1, y=Var2, fill=value)) + 
+  geom_tile() 
+
+```
+
+### 2.2 Dendrogram
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+wine.hc <- hclust(wine.d, method = "complete")
+plot(wine.hc, hang=-1)
+
+plot(wine.hc, hang=-1)
+rect.hclust(wine.hc, k=4)
+wine.clust <- cutree(wine.hc, k=4)
+wine.clust
+
+```
+
+### 2.3 Interpretation of the clusters
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+wine.comp <- data.frame(wine[,-12], Clust=factor(wine.clust), Id=row.names(wine))
+wine.df <- melt(wine.comp, id=c("Id", "Clust"))
+head(wine.df)
+
+ggplot(wine.df, aes(y=value, group=Clust, fill=Clust)) +
+  geom_boxplot() +
+  facet_wrap(~variable, ncol=4, nrow=3)
+
+```
+
+### 2.4 Choice of the number of clusters
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(factoextra)
+fviz_nbclust(wine[,-12],
+             hcut, hc_method="complete",
+             hc_metric="manhattan",
+             method = "wss", 
+             k.max = 25, verbose = FALSE)
+fviz_nbclust(wine[,-12],
+             hcut, hc_method="complete",
+             hc_metric="manhattan",
+             method = "silhouette", 
+             k.max = 25, verbose = FALSE)
+fviz_nbclust(wine[,-12],
+             hcut, hc_method="complete",
+             hc_metric="manhattan",
+             method = "gap", 
+             k.max = 25, verbose = FALSE)
+
+```
+
+## K-means
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+fviz_nbclust(wine[,-12],
+             kmeans,
+             method = "wss", 
+             k.max = 25, verbose = FALSE)
+fviz_nbclust(wine[,-12],
+             kmeans, 
+             method = "silhouette", 
+             k.max = 25, verbose = FALSE)
+fviz_nbclust(wine[,-12],
+             kmeans,
+             method = "gap", 
+             k.max = 25, verbose = FALSE)
+
+wine.km <- kmeans(wine[,-12], centers=2)
+wine.km$cluster ## see also wine.km for more information about the clustering hence obtained
+
+```
+
+## 4 PAM and silhouette plot
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(cluster)
+wine.pam <- pam(wine[,-12], k=3)
+wine.pam
+plot(silhouette(wine.pam))
+
+```
+
+# Course 10 Principal Component Analysis
+
+## 1 Data preparation
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+wine <- read.csv("Wine.csv") # adapt the path
+row.names(wine) <- paste("W", c(1:nrow(wine)), sep="") 
+wine[,-12] <- scale(wine[,-12])
+
+```
+
+
+## 2 Principal Component Analysis
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(ggcorrplot)
+ggcorrplot(cor(wine[,-12]))
+library(FactoMineR)
+library(factoextra)
+wine.pca <- PCA(wine[,-12], ncp = 11, graph = FALSE)
+wine.pca
+```
+
+### 2.1 Circle of correlations and interpretation
+
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+fviz_pca_var(wine.pca)
+fviz_contrib(wine.pca, choice = "var", axes = 1)
 
 
 ```
 
+### 2.2 Map of the individual and biplot
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+## fviz_pca_ind(wine.pca) ## only the individuals
+fviz_pca_biplot(wine.pca) ## biplot
+
+```
+
+### 2.3 How many dimensions
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+fviz_eig(wine.pca, addlabels = TRUE, ncp=11)
+library(gridExtra)
+p1 <- fviz_pca_biplot(wine.pca, axes = 1:2) 
+p2 <- fviz_pca_biplot(wine.pca, axes = 3:4) 
+p3 <- fviz_pca_biplot(wine.pca, axes = 5:6) 
+grid.arrange(p1, p2, p3, nrow = 2, ncol=2)
+
+```
+
+## 3 Using PCA to represent clustering results
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+wine.hc <- hclust(dist(wine[,-12], method = "manhattan"))
+wine.clust <- cutree(wine.hc, k = 4)
+fviz_pca_biplot(wine.pca,
+             col.ind = factor(wine.clust))
+
+```
+
+# Course 11 Variable Importance
+
+## 1.1 Applying ML models
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+library(rpart)
+library(e1071)
+library(dplyr)
+library(ISLR)
+
+# divide the data into training and testing sets
+set.seed(2022)
+carseats_index <- sample(x=1:nrow(Carseats), size=0.9*nrow(Carseats), replace=FALSE)
+carseats.tr <- Carseats[carseats_index,]
+carseats.te <- Carseats[-carseats_index,]
+
+# define a linear regression
+carseats.lm <- lm(Sales~., data=carseats.tr)
+
+# define a regression tree (you can also use `adabag::autoprune()`here
+carseats.rt <- rpart(Sales~., data=carseats.tr)
+
+# define a support-vector machine
+carseats.svm <- svm(Sales ~ ., data=carseats.tr)
+```
+
+## 1.2 Creating an explain object
+
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(dplyr)
+library(DALEX)
+
+x_train <- select(carseats.tr, -Sales)
+y_train <- pull(carseats.tr, Sales)
+
+explainer_lm <- DALEX::explain(model = carseats.lm, 
+                                 data = x_train, 
+                                 y = y_train,
+                                 label = "Linear Regression")
+
+explainer_rt <- DALEX::explain(model = carseats.rt,
+                               data = x_train,
+                               y = y_train,
+                               label = "Regression Tree")
+
+explainer_svm <- DALEX::explain(model = carseats.svm,
+                                data = x_train,
+                                y = y_train,
+                                label = "Support Vector Machine")
+
+```
+
+## 1.3 Plotting the feature importance
+
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+calculate_importance <- function(your_model_explainer, n_permutations = 10) {
+  imp <- model_parts(explainer = your_model_explainer,
+                     B = n_permutations,
+                     type = "ratio",
+                     N = NULL)
+  return(imp)
+}
+
+importance_lm  <- calculate_importance(explainer_lm)
+importance_rt  <- calculate_importance(explainer_rt)
+importance_svm <- calculate_importance(explainer_svm)
+
+library(ggplot2)
+plot(importance_lm, importance_rt, importance_svm) +
+  ggtitle("Mean variable-importance ratio over 10 permutations", "")
+
+```
+
+# Course 12 Random Forest
+
+## 1 Classification task with Random Forests
+
+### 1.1 Data preparation for Random Forest
+
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(randomForest)
+wine <- read.csv("Wine.csv")
+wine$quality <- as.factor(wine$quality)
+
+# define a function to get the splitting index (training and testing) of a given dataset
+get_split_index <- function(dataset, train_proportion = 0.75) {
+  set.seed(123)
+  index <-
+    sample(
+      x = 1:2,
+      size = nrow(dataset),
+      replace = TRUE,
+      prob = c(train_proportion, 1 - train_proportion)
+    )
+  return(index)
+}
+
+wine_index <- get_split_index(wine)
+wine.tr <- wine[wine_index == 1, ]
+wine.te <- wine[wine_index == 2, ]
+
+```
+
+### 1.2 Training and testing the model
+
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+
+wine.rf <- randomForest(quality~., data=wine.tr, ntree=1000, importance=TRUE)
+wine.pred.rf <- predict(wine.rf, newdata=wine.te)
+
+library(caret)
+confusionMatrix(data=wine.pred.rf, reference = wine.te$quality)
+```
+
+### 1.3 Variable importance
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+varImpPlot(wine.rf)
+importance(wine.rf)
+
+```
+
+## 2 Regression task with Random Forests
+
+```{r, echo = T, message = FALSE,warning=FALSE}
+library(dplyr)
+library(magrittr)
+real_estate_data <- read.csv("real_estate_data.csv")
+
+# select the columns of interest
+real_estate_data <- 
+  real_estate_data %>% 
+  select(-c(No, Month, Year))
+
+# once again, divide the data into training and testing sets using the function created earlier
+restate_index <- get_split_index(real_estate_data)
+restate.tr <- real_estate_data[restate_index == 1, ]
+restate.te <- real_estate_data[restate_index == 2, ]
+
+# apply the RF model as a regression
+restate.rf <- randomForest(Price~., data=restate.tr, ntree=1000, importance=TRUE)
+restate.pred.rf<-predict(restate.rf, newdata=restate.te)
+
+# compute rmse and plot the results as well the VarImp
+(rmse <- sqrt(mean((restate.te$Price - restate.pred.rf)^2)))
+plot(restate.te$Price ~ restate.pred.rf)
+abline(0,1)
+varImpPlot(restate.rf)
+importance(restate.rf)
+
+```
 
